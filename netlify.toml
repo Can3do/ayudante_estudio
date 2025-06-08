@@ -1,0 +1,18 @@
+# Archivo de configuración para Netlify
+
+[build]
+  # Directorio de build para tu app de Preact (generalmente 'dist')
+  publish = "dist" 
+  # Comando para construir tu aplicación
+  command = "npm run build"
+
+[functions]
+  # Directorio donde se encuentran tus Netlify Functions
+  directory = "netlify/functions"
+
+# Regla de redirección para que tu app de frontend pueda llamar a la función
+# Esto hace que '/api/generate-content' se redirija a tu función de Netlify
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
