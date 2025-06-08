@@ -1,144 +1,37 @@
-import { useState, useCallback } from "preact/hooks";
+import { useState, useCallback, useRef } from "preact/hooks"; // Se añade useRef
 import "./app.css";
 
 // Importa los componentes de sección
 import { StudyDashboard } from "./components/StudyDashboard";
-
-// --- Componente para la pantalla de subida de archivos y texto ---
-const FileUploadScreen = ({
-	onFileSelect,
-	onTextSubmit,
-	isLoading,
-	error,
-	onDrag,
-	onDrop,
-	dragActive,
-}) => {
-	const [mode, setMode] = useState("pdf"); // 'pdf' o 'text'
-	const [textAreaValue, setTextAreaValue] = useState("");
-
-	const handleFormSubmit = (e) => {
-		e.preventDefault();
-		onTextSubmit(textAreaValue);
-	};
-
-	return (
-		<div className="min-h-screen flex items-center justify-center p-4 bg-slate-50">
-			<div className="text-center max-w-2xl w-full">
-				<header className="mb-8">
-					<h1 className="text-5xl font-bold text-slate-800">
-						Asistente de Estudio <span className="text-blue-600">IA</span>
-					</h1>
-					<p className="mt-4 text-lg text-slate-500">
-						Transforma tus documentos o texto en resúmenes, flashcards y más.
-					</p>
-				</header>
-
-				{/* Pestañas para seleccionar el modo de entrada */}
-				<div className="mb-6 flex justify-center border-b border-slate-200">
-					<button
-						onClick={() => setMode("pdf")}
-						className={`px-6 py-3 font-semibold transition-colors ${
-							mode === "pdf"
-								? "border-b-2 border-blue-600 text-blue-600"
-								: "text-slate-500 hover:text-blue-600"
-						}`}
-					>
-						Subir PDF
-					</button>
-					<button
-						onClick={() => setMode("text")}
-						className={`px-6 py-3 font-semibold transition-colors ${
-							mode === "text"
-								? "border-b-2 border-blue-600 text-blue-600"
-								: "text-slate-500 hover:text-blue-600"
-						}`}
-					>
-						Pegar Texto
-					</button>
-				</div>
-
-				{/* Renderizado condicional basado en el modo */}
-				{mode === "pdf" ? (
-					<form
-						className={`relative w-full h-64 border-2 border-dashed border-slate-300 rounded-2xl flex flex-col justify-center items-center transition-all ${
-							dragActive ? "drop-zone-active" : ""
-						}`}
-						onDragEnter={onDrag}
-						onDragLeave={onDrag}
-						onDragOver={onDrag}
-						onDrop={onDrop}
-					>
-						<input
-							type="file"
-							id="file-upload"
-							className="hidden"
-							accept=".pdf"
-							onChange={(e) => onFileSelect(e.target.files[0])}
-						/>
-						{isLoading ? (
-							<>
-								<i className="ph-light ph-circle-notch text-5xl text-blue-500 animate-spin"></i>
-								<p className="mt-4 font-medium">Procesando tu PDF...</p>
-							</>
-						) : (
-							<>
-								<i className="ph-light ph-file-pdf text-6xl text-slate-400"></i>
-								<p className="mt-4 font-semibold text-slate-600">
-									Arrastra y suelta tu archivo PDF aquí
-								</p>
-								<p className="text-slate-500">o</p>
-								<label
-									htmlFor="file-upload"
-									className="cursor-pointer mt-2 bg-blue-600 text-white font-semibold px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-								>
-									Selecciona un archivo
-								</label>
-							</>
-						)}
-					</form>
-				) : (
-					<form onSubmit={handleFormSubmit}>
-						<textarea
-							value={textAreaValue}
-							onInput={(e) => setTextAreaValue(e.currentTarget.value)}
-							className="w-full h-64 p-4 border-2 border-slate-300 rounded-2xl resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-							placeholder="Pega tu texto aquí..."
-						></textarea>
-						<button
-							type="submit"
-							className="mt-4 bg-blue-600 text-white font-semibold px-8 py-3 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-slate-400"
-							disabled={!textAreaValue}
-						>
-							Analizar Texto
-						</button>
-					</form>
-				)}
-				{error && <p className="mt-4 text-red-500 font-medium">{error}</p>}
-			</div>
-		</div>
-	);
-};
+import { FileUploadScreen } from "./components/FileUploadScreen";
 
 // --- COMPONENTE PRINCIPAL (ORQUESTADOR) ---
 export function App() {
 	// --- ESTADO GLOBAL DE LA APLICACIÓN ---
 	const [inputText, setInputText] = useState("");
-	const [cache, setCache] = useState({}); // Nuevo estado para el caché
+	const [cache, setCache] = useState({});
 	const [isLoadingPdf, setIsLoadingPdf] = useState(false);
 	const [isLoadingContent, setIsLoadingContent] = useState(false);
+	const [isRegenerating, setIsRegenerating] = useState(false);
 	const [activeTool, setActiveTool] = useState(null);
 	const [generatedContent, setGeneratedContent] = useState(null);
 	const [error, setError] = useState("");
 	const [dragActive, setDragActive] = useState(false);
 
+	// Ref para controlar y abortar peticiones fetch en curso
+	const abortControllerRef = useRef(null);
+
 	// --- MANEJADORES DE LÓGICA ---
 	const clearAllData = () => {
+		// Si hay una petición en curso cuando el usuario resetea, la abortamos.
+		if (abortControllerRef.current) {
+			abortControllerRef.current.abort();
+		}
 		setInputText("");
 		setActiveTool(null);
 		setGeneratedContent(null);
 		setError("");
-		setCache({}); // Limpia el caché
+		setCache({});
 	};
 
 	const handleFile = useCallback(async (file) => {
@@ -204,29 +97,39 @@ export function App() {
 		if (e.dataTransfer.files?.[0]) handleFile(e.dataTransfer.files[0]);
 	};
 
-	const handleToolSelection = async (tool) => {
+	const handleToolSelection = async (tool, isRegenerating = false) => {
 		if (!inputText) {
 			setError("No hay texto para analizar.");
 			return;
 		}
 
-		setActiveTool(tool);
-		setError("");
+		const currentTool = isRegenerating ? activeTool : tool;
 
-		// --- LÓGICA DE CACHÉ ---
-		if (cache[tool]) {
-			setGeneratedContent(cache[tool]);
-			return;
+		if (!isRegenerating) {
+			setActiveTool(tool);
+			setError("");
+			if (cache[tool]) {
+				setGeneratedContent(cache[tool]);
+				return;
+			}
 		}
 
-		setIsLoadingContent(true);
-		setGeneratedContent(null);
+		if (isRegenerating) {
+			setIsRegenerating(true);
+		} else {
+			setIsLoadingContent(true);
+			setGeneratedContent(null);
+		}
 
 		try {
+			// Creamos un nuevo AbortController para esta petición específica.
+			abortControllerRef.current = new AbortController();
+
 			const response = await fetch("/api/generate-content", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ text: inputText, tool: tool }),
+				body: JSON.stringify({ text: inputText, tool: currentTool }),
+				signal: abortControllerRef.current.signal, // Pasamos la señal al fetch
 			});
 
 			if (!response.ok) {
@@ -237,39 +140,51 @@ export function App() {
 			}
 
 			const data = await response.json();
-			let contentToCache;
+			let newContentBlock;
 
-			// --- CORRECCIÓN APLICADA AQUÍ ---
-			// Lógica robusta para manejar diferentes formatos de respuesta de la API.
-			if (tool === "summary") {
-				contentToCache = data.summary;
-			} else if (tool === "plan") {
-				contentToCache = data.plan || [];
-			} else if (tool === "flashcards") {
-				// Busca el array en la raíz, o dentro de claves comunes como 'flashcards' o 'cards'.
-				contentToCache = Array.isArray(data)
+			if (currentTool === "summary") {
+				newContentBlock = data.summary;
+			} else if (currentTool === "plan") {
+				newContentBlock = data.plan || [];
+			} else if (currentTool === "flashcards") {
+				newContentBlock = Array.isArray(data)
 					? data
 					: data.flashcards || data.cards || [];
-			} else if (tool === "quiz") {
-				// Busca el array en la raíz, o dentro de claves comunes como 'quiz' o 'questions'.
-				contentToCache = Array.isArray(data)
+			} else if (currentTool === "quiz") {
+				newContentBlock = Array.isArray(data)
 					? data
 					: data.quiz || data.questions || [];
 			} else {
-				// Fallback genérico para cualquier otra herramienta futura.
-				contentToCache = data;
+				newContentBlock = data;
 			}
 
-			setGeneratedContent(contentToCache);
+			const newGeneratedContent = isRegenerating
+				? [...(generatedContent || []), newContentBlock]
+				: [newContentBlock];
+
+			setGeneratedContent(newGeneratedContent);
 			setCache((prevCache) => ({
 				...prevCache,
-				[tool]: contentToCache,
+				[currentTool]: newGeneratedContent,
 			}));
 		} catch (err) {
-			console.error("Error al llamar a la API:", err);
-			setError(`Error: ${err.message}`);
+			// --- CORRECCIÓN APLICADA AQUÍ ---
+			// Este nuevo bloque maneja los errores de forma más segura,
+			// ignorando los errores de aborto intencionados.
+			if (err.name !== "AbortError") {
+				// Solo maneja errores que NO son de aborto.
+				console.error("Error al llamar a la API:", err);
+				setError(`Error: ${err.message}`);
+			} else {
+				// Silenciosamente registra que la petición fue abortada.
+				console.log("Petición abortada por el usuario.");
+			}
 		} finally {
-			setIsLoadingContent(false);
+			if (isRegenerating) {
+				setIsRegenerating(false);
+			} else {
+				setIsLoadingContent(false);
+			}
 		}
 	};
 
@@ -287,13 +202,14 @@ export function App() {
 		);
 	}
 
-	// Se pasa el `error` al dashboard para que pueda ser mostrado
 	return (
 		<StudyDashboard
 			activeTool={activeTool}
-			onToolSelect={handleToolSelection}
+			onToolSelect={(tool) => handleToolSelection(tool, false)}
+			onRegenerate={() => handleToolSelection(activeTool, true)}
 			onReset={clearAllData}
 			isLoadingContent={isLoadingContent}
+			isRegenerating={isRegenerating}
 			generatedContent={generatedContent}
 			error={error}
 		/>

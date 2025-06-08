@@ -66,7 +66,7 @@ export const handler = async (event) => {
 		console.log(`Ejecutando la API de OpenAI para la herramienta: ${tool}`);
 
 		const response = await openai.chat.completions.create({
-			model: "gpt-4o-mini",
+			model: "gpt-4.1-nano",
 			messages: [{ role: "user", content: prompt }],
 			// --- CORRECCIÓN APLICADA AQUÍ ---
 			// El formato de respuesta ahora es condicional.
