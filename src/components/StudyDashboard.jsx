@@ -5,24 +5,29 @@ export const StudyDashboard = ({
 	activeTool,
 	onToolSelect,
 	onRegenerate,
-	onReset,
 	isLoadingContent,
 	isRegenerating,
 	generatedContent,
 	error,
-	isSidebarOpen, // Prop para saber si el menú está abierto
-	toggleSidebar, // Prop para la función que abre/cierra el menú
+	isSidebarOpen,
+	toggleSidebar,
 }) => {
-	// Función para renderizar el contenido principal
+	// Función interna para renderizar el contenido principal de forma condicional
 	const renderMainContent = () => {
+		// 1. Si está cargando por primera vez, muestra el indicador de carga
 		if (isLoadingContent) {
 			return (
 				<div className="flex flex-col items-center justify-center text-center p-8 h-full">
 					<i className="ph-light ph-brain text-5xl text-blue-500 animate-pulse"></i>
 					<p className="mt-4 text-lg font-medium">La IA está pensando...</p>
+					<p className="text-slate-500">
+						Analizando el documento para generar tu contenido.
+					</p>
 				</div>
 			);
 		}
+
+		// 2. Si hay contenido generado, lo mapea y muestra
 		if (Array.isArray(generatedContent) && generatedContent.length > 0) {
 			return (
 				<>
@@ -33,10 +38,11 @@ export const StudyDashboard = ({
 						>
 							<ContentDisplay
 								activeTool={activeTool}
-								generatedContent={contentBlock}
+								generatedContent={contentBlock} // Pasa cada bloque individual
 							/>
 						</div>
 					))}
+					{/* Botón para volver a generar */}
 					<div className="mt-6 flex justify-center">
 						<button
 							onClick={onRegenerate}
@@ -59,19 +65,27 @@ export const StudyDashboard = ({
 				</>
 			);
 		}
+
+		// 3. Si no hay contenido ni está cargando, y no hay error, muestra el mensaje inicial
 		if (!error) {
 			return (
 				<div className="flex flex-col items-center justify-center text-center p-8 h-full bg-slate-100 rounded-xl">
 					<i className="ph-light ph-sparkle text-5xl text-slate-400"></i>
 					<p className="mt-4 text-lg font-medium">Selecciona una herramienta</p>
+					<p className="text-slate-500">
+						Elige una opción del panel izquierdo para comenzar.
+					</p>
 				</div>
 			);
 		}
+
+		// 4. Si ninguna de las condiciones anteriores se cumple (por ejemplo, hay un error pero no hay contenido), no muestra nada.
 		return null;
 	};
 
 	return (
-		<div className="relative min-h-screen md:flex">
+		// --- CAMBIO 1: Se cambia min-h-full a h-full para asegurar que el contenedor tenga una altura definida ---
+		<div className="relative h-full md:flex">
 			{/* Overlay para móvil */}
 			{isSidebarOpen && (
 				<div
@@ -91,7 +105,6 @@ export const StudyDashboard = ({
 						<i className="ph-bold ph-brain text-3xl text-blue-600"></i>
 						<h1 className="text-xl font-bold">Asistente IA</h1>
 					</div>
-					{/* Botón para cerrar en móvil */}
 					<button
 						onClick={toggleSidebar}
 						className="md:hidden text-slate-500 hover:text-slate-800"
@@ -128,7 +141,6 @@ export const StudyDashboard = ({
 						activeTool={activeTool}
 						onClick={onToolSelect}
 					/>
-					{/* --- NUEVO BOTÓN AÑADIDO --- */}
 					<ToolButton
 						icon="book-open"
 						label="Glosario"
@@ -137,20 +149,10 @@ export const StudyDashboard = ({
 						onClick={onToolSelect}
 					/>
 				</nav>
-				<div className="mt-auto">
-					<button
-						onClick={onReset}
-						className="w-full flex items-center justify-center gap-2 text-slate-600 font-medium py-2 px-4 rounded-lg hover:bg-slate-100 transition-colors"
-					>
-						<i className="ph ph-arrow-left"></i>
-						<span>Cargar otro</span>
-					</button>
-				</div>
 			</aside>
 
-			{/* Contenido Principal */}
-			<main className="flex-1">
-				{/* Cabecera para Móvil con Botón de Menú */}
+			{/* --- CAMBIO 2: Se reestructura el <main> para que sea un contenedor flex en columna --- */}
+			<main className="flex-1 flex flex-col h-full">
 				<header className="sticky top-0 z-10 bg-white/80 backdrop-blur-sm p-4 flex justify-between items-center border-b md:hidden">
 					<h2 className="text-lg font-bold text-slate-700 capitalize">
 						{activeTool || "Dashboard"}
@@ -163,7 +165,8 @@ export const StudyDashboard = ({
 					</button>
 				</header>
 
-				<div className="p-4 sm:p-8">
+				{/* --- CAMBIO 3: Este div ahora es el área de scroll --- */}
+				<div className="flex-1 p-4 sm:p-8 overflow-y-auto">
 					<div className="max-w-4xl mx-auto">
 						{error && (
 							<div
@@ -173,6 +176,7 @@ export const StudyDashboard = ({
 								{error}
 							</div>
 						)}
+
 						{renderMainContent()}
 					</div>
 				</div>

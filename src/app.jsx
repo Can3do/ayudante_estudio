@@ -4,10 +4,9 @@ import "./app.css";
 // Importa los componentes de sección
 import { StudyDashboard } from "./components/StudyDashboard";
 import { FileUploadScreen } from "./components/FileUploadScreen";
+import { Header } from "./components/Header"; // 1. Importa el nuevo Header
 
-// --- COMPONENTE PRINCIPAL (ORQUESTADOR) ---
 export function App() {
-	// --- ESTADO GLOBAL DE LA APLICACIÓN ---
 	const [inputText, setInputText] = useState("");
 	const [cache, setCache] = useState({});
 	const [isLoadingPdf, setIsLoadingPdf] = useState(false);
@@ -21,7 +20,6 @@ export function App() {
 
 	const abortControllerRef = useRef(null);
 
-	// --- MANEJADORES DE LÓGICA ---
 	const clearAllData = () => {
 		if (abortControllerRef.current) {
 			abortControllerRef.current.abort();
@@ -33,7 +31,6 @@ export function App() {
 		setCache({});
 		setIsSidebarOpen(false);
 	};
-
 	const handleFile = useCallback(async (file) => {
 		if (!file || file.type !== "application/pdf") {
 			setError("Por favor, selecciona un archivo PDF válido.");
@@ -195,18 +192,23 @@ export function App() {
 		);
 	}
 
+	// 2. Si hay texto, renderiza el Header y el Dashboard
 	return (
-		<StudyDashboard
-			activeTool={activeTool}
-			onToolSelect={(tool) => handleToolSelection(tool, false)}
-			onRegenerate={() => handleToolSelection(activeTool, true)}
-			onReset={clearAllData}
-			isLoadingContent={isLoadingContent}
-			isRegenerating={isRegenerating}
-			generatedContent={generatedContent}
-			error={error}
-			isSidebarOpen={isSidebarOpen}
-			toggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
-		/>
+		<div className="flex flex-col h-screen bg-slate-50">
+			<Header onReset={clearAllData} />
+			<div className="flex-1 overflow-y-hidden">
+				<StudyDashboard
+					activeTool={activeTool}
+					onToolSelect={(tool) => handleToolSelection(tool, false)}
+					onRegenerate={() => handleToolSelection(activeTool, true)}
+					isLoadingContent={isLoadingContent}
+					isRegenerating={isRegenerating}
+					generatedContent={generatedContent}
+					error={error}
+					isSidebarOpen={isSidebarOpen}
+					toggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
+				/>
+			</div>
+		</div>
 	);
 }
