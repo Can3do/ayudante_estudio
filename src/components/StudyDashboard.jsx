@@ -31,6 +31,11 @@ export const StudyDashboard = ({
 		if (Array.isArray(generatedContent) && generatedContent.length > 0) {
 			return (
 				<>
+					{/* Título de la sección para dar contexto */}
+					<h2 className="text-3xl font-bold text-slate-800 mb-6 capitalize">
+						{activeTool}
+					</h2>
+
 					{generatedContent.map((contentBlock, index) => (
 						<div
 							key={index}
@@ -79,12 +84,11 @@ export const StudyDashboard = ({
 			);
 		}
 
-		// 4. Si ninguna de las condiciones anteriores se cumple (por ejemplo, hay un error pero no hay contenido), no muestra nada.
+		// 4. Si ninguna de las condiciones anteriores se cumple, no muestra nada.
 		return null;
 	};
 
 	return (
-		// --- CAMBIO 1: Se cambia min-h-full a h-full para asegurar que el contenedor tenga una altura definida ---
 		<div className="relative h-full md:flex">
 			{/* Overlay para móvil */}
 			{isSidebarOpen && (
@@ -151,12 +155,15 @@ export const StudyDashboard = ({
 				</nav>
 			</aside>
 
-			{/* --- CAMBIO 2: Se reestructura el <main> para que sea un contenedor flex en columna --- */}
-			<main className="flex-1 flex flex-col h-full">
-				<header className="sticky top-0 z-10 bg-white/80 backdrop-blur-sm p-4 flex justify-between items-center border-b md:hidden">
-					<h2 className="text-lg font-bold text-slate-700 capitalize">
-						{activeTool || "Dashboard"}
-					</h2>
+			{/* --- CORRECCIÓN APLICADA AQUÍ --- */}
+			{/* Se cambia a un layout de grid para evitar la superposición de la cabecera en móvil */}
+			<main className="flex-1 grid grid-rows-[auto_1fr] h-full">
+				{/* Header para móvil: ya no es 'sticky' porque el grid lo posiciona */}
+				<header className="bg-white/80 backdrop-blur-sm p-4 flex justify-between items-center border-b md:hidden">
+					<div className="flex items-center gap-2">
+						<i className="ph-bold ph-brain text-2xl text-blue-600"></i>
+						<h1 className="text-lg font-bold">Asistente IA</h1>
+					</div>
 					<button
 						onClick={toggleSidebar}
 						className="text-slate-600 hover:text-slate-900"
@@ -165,19 +172,21 @@ export const StudyDashboard = ({
 					</button>
 				</header>
 
-				{/* --- CAMBIO 3: Este div ahora es el área de scroll --- */}
-				<div className="flex-1 p-4 sm:p-8 overflow-y-auto">
-					<div className="max-w-4xl mx-auto">
-						{error && (
-							<div
-								className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg"
-								role="alert"
-							>
-								{error}
-							</div>
-						)}
+				{/* Este div ahora es la celda de la grid que contiene el contenido desplazable */}
+				<div className="overflow-y-auto">
+					<div className="p-4 sm:p-8">
+						<div className="max-w-4xl mx-auto">
+							{error && (
+								<div
+									className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg"
+									role="alert"
+								>
+									{error}
+								</div>
+							)}
 
-						{renderMainContent()}
+							{renderMainContent()}
+						</div>
 					</div>
 				</div>
 			</main>
