@@ -71,7 +71,7 @@ export const handler = async (event) => {
 		}
 
 		const response = await openai.chat.completions.create({
-			model: "gpt-4o-mini",
+			model: "gpt-4.1-nano",
 			messages: [{ role: "user", content: prompt }],
 			response_format:
 				tool === "summary" ? { type: "text" } : { type: "json_object" },

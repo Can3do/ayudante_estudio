@@ -10,6 +10,9 @@
   # Directorio donde se encuentran tus Netlify Functions
   directory = "netlify/functions"
 
+[functions."generate-content"]
+  timeout = 25
+
 # Regla de redirección para que tu app de frontend pueda llamar a la función
 # Esto hace que '/api/generate-content' se redirija a tu función de Netlify
 [[redirects]]
