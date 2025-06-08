@@ -2,10 +2,9 @@
 import OpenAI from "openai";
 
 // --- PROMPTS PARA CADA HERRAMIENTA ---
-// Estos prompts le dicen a la IA exactamente qué hacer y en qué formato.
 const getPrompt = (tool, text) => {
 	const commonInstructions = `Analiza el siguiente texto y genera el contenido solicitado. El texto es: """${text}"""`;
-
+	// ... (El resto de esta función no cambia)
 	switch (tool) {
 		case "summary":
 			return `
@@ -44,7 +43,9 @@ export const handler = async (event) => {
 	try {
 		const { text, tool } = JSON.parse(event.body);
 
-		if (!text || !tool || process.env.OPENAI_API_KEY) {
+		// --- CORRECCIÓN APLICADA AQUÍ ---
+		// La validación ahora comprueba si la clave de API NO existe.
+		if (!text || !tool || !process.env.OPENAI_API_KEY) {
 			return {
 				statusCode: 400,
 				body: JSON.stringify({
@@ -67,9 +68,8 @@ export const handler = async (event) => {
 		console.log(`Ejecutando la API de OpenAI para la herramienta: ${tool}`);
 
 		const response = await openai.chat.completions.create({
-			model: "gpt-4o-mini", // El modelo que solicitaste
+			model: "gpt-4o-mini",
 			messages: [{ role: "user", content: prompt }],
-			// 'json_object' asegura que la respuesta sea un JSON válido, crucial para flashcards, quiz y plan.
 			response_format:
 				tool !== "summary" ? { type: "json_object" } : { type: "text" },
 		});
@@ -81,8 +81,6 @@ export const handler = async (event) => {
 			headers: {
 				"Content-Type": "application/json",
 			},
-			// Si el contenido es un string JSON (para flashcards, etc.), lo parseamos antes de enviarlo.
-			// Si es un resumen (texto plano), lo envolvemos en un objeto.
 			body: tool !== "summary" ? content : JSON.stringify({ summary: content }),
 		};
 	} catch (error) {
