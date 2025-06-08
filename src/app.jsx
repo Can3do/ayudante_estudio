@@ -17,11 +17,8 @@ export function App() {
 	const [generatedContent, setGeneratedContent] = useState(null);
 	const [error, setError] = useState("");
 	const [dragActive, setDragActive] = useState(false);
-
-	// --- NUEVO ESTADO PARA EL MENÚ LATERAL RESPONSIVE ---
 	const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-	// Ref para controlar y abortar peticiones fetch en curso
 	const abortControllerRef = useRef(null);
 
 	// --- MANEJADORES DE LÓGICA ---
@@ -34,7 +31,7 @@ export function App() {
 		setGeneratedContent(null);
 		setError("");
 		setCache({});
-		setIsSidebarOpen(false); // Cierra el menú al resetear
+		setIsSidebarOpen(false);
 	};
 
 	const handleFile = useCallback(async (file) => {
@@ -111,7 +108,7 @@ export function App() {
 		if (!isRegenerating) {
 			setActiveTool(tool);
 			setError("");
-			setIsSidebarOpen(false); // Cierra el menú al seleccionar una herramienta en móvil
+			setIsSidebarOpen(false);
 			if (cache[tool]) {
 				setGeneratedContent(cache[tool]);
 				return;
@@ -149,14 +146,12 @@ export function App() {
 				newContentBlock = data.summary;
 			} else if (currentTool === "plan") {
 				newContentBlock = data.plan || [];
+			} else if (currentTool === "glossary") {
+				newContentBlock = data.glossary || [];
 			} else if (currentTool === "flashcards") {
-				newContentBlock = Array.isArray(data)
-					? data
-					: data.flashcards || data.cards || [];
+				newContentBlock = data.flashcards || [];
 			} else if (currentTool === "quiz") {
-				newContentBlock = Array.isArray(data)
-					? data
-					: data.quiz || data.questions || [];
+				newContentBlock = data.quiz || [];
 			} else {
 				newContentBlock = data;
 			}
@@ -210,8 +205,8 @@ export function App() {
 			isRegenerating={isRegenerating}
 			generatedContent={generatedContent}
 			error={error}
-			isSidebarOpen={isSidebarOpen} // Pasa el estado del menú
-			toggleSidebar={() => setIsSidebarOpen((prev) => !prev)} // Pasa la función para abrir/cerrar
+			isSidebarOpen={isSidebarOpen}
+			toggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
 		/>
 	);
 }

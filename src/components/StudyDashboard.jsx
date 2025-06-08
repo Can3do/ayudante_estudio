@@ -128,6 +128,14 @@ export const StudyDashboard = ({
 						activeTool={activeTool}
 						onClick={onToolSelect}
 					/>
+					{/* --- NUEVO BOTÓN AÑADIDO --- */}
+					<ToolButton
+						icon="book-open"
+						label="Glosario"
+						tool="glossary"
+						activeTool={activeTool}
+						onClick={onToolSelect}
+					/>
 				</nav>
 				<div className="mt-auto">
 					<button

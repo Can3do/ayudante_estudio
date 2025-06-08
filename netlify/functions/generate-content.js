@@ -7,10 +7,10 @@ const getPrompt = (tool, text) => {
 
 	switch (tool) {
 		case "summary":
-			// Este prompt pide texto plano, por lo que no debe forzarse a JSON.
+			// --- PROMPT ACTUALIZADO PARA PEDIR MARKDOWN ---
 			return `
                 ${commonInstructions}
-                Tarea: Genera un resumen conciso y claro del texto. Debe capturar las ideas principales y los puntos clave.
+                Tarea: Genera un resumen conciso y claro del texto. Utiliza formato Markdown para mejorar la legibilidad, incluyendo encabezados (con '#'), listas (con '*') y texto en negrita (con '**').
             `;
 		case "flashcards":
 			return `
@@ -29,6 +29,13 @@ const getPrompt = (tool, text) => {
                 Analiza el siguiente texto: """${text}"""
                 Tu tarea es generar un plan de estudio de 4 días. Tu respuesta DEBE ser un objeto JSON VÁLIDO y nada más. El objeto raíz debe tener una única clave llamada "plan", cuyo valor es un array de objetos. Cada objeto debe tener las claves "day" y "task".
                 Ejemplo de formato: {"plan": [{"day": "Día 1", "task": "Tarea 1"}]}
+            `;
+		case "glossary":
+			return `
+                Analiza el siguiente texto: """${text}"""
+                Tu tarea es identificar 5 términos o conceptos clave y generar un glosario.
+                Tu respuesta DEBE ser un objeto JSON VÁLIDO y nada más. El objeto raíz debe tener una única clave llamada "glossary", cuyo valor es un array de objetos. Cada objeto debe tener las claves "term" y "definition".
+                Ejemplo de formato: {"glossary": [{"term": "Término 1", "definition": "Definición del término 1."}]}
             `;
 		default:
 			return null;
@@ -63,14 +70,9 @@ export const handler = async (event) => {
 			};
 		}
 
-		console.log(`Ejecutando la API de OpenAI para la herramienta: ${tool}`);
-
 		const response = await openai.chat.completions.create({
-			model: "gpt-4.1-nano",
+			model: "gpt-4o-mini",
 			messages: [{ role: "user", content: prompt }],
-			// --- CORRECCIÓN APLICADA AQUÍ ---
-			// El formato de respuesta ahora es condicional.
-			// Para 'summary', permite texto. Para el resto, fuerza un objeto JSON.
 			response_format:
 				tool === "summary" ? { type: "text" } : { type: "json_object" },
 		});
@@ -80,7 +82,6 @@ export const handler = async (event) => {
 		return {
 			statusCode: 200,
 			headers: { "Content-Type": "application/json" },
-			// La lógica para envolver el resumen en un JSON se mantiene, lo cual es correcto.
 			body: tool === "summary" ? JSON.stringify({ summary: content }) : content,
 		};
 	} catch (error) {
