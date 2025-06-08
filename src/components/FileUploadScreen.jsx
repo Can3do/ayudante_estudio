@@ -97,7 +97,7 @@ export const FileUploadScreen = ({
 						<textarea
 							value={textAreaValue}
 							onInput={(e) => setTextAreaValue(e.currentTarget.value)}
-							className="w-full h-64 p-4 border-2 border-slate-300 rounded-2xl resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+							className="bg-white text-slate-800 w-full h-64 p-4 border-2 border-slate-300 rounded-2xl resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
 							placeholder="Pega tu texto aquí..."
 						></textarea>
 						<button
