@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "preact/hooks"; // Se añade useRef
+import { useState, useCallback, useRef } from "preact/hooks";
 import "./app.css";
 
 // Importa los componentes de sección
@@ -18,12 +18,14 @@ export function App() {
 	const [error, setError] = useState("");
 	const [dragActive, setDragActive] = useState(false);
 
+	// --- NUEVO ESTADO PARA EL MENÚ LATERAL RESPONSIVE ---
+	const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
 	// Ref para controlar y abortar peticiones fetch en curso
 	const abortControllerRef = useRef(null);
 
 	// --- MANEJADORES DE LÓGICA ---
 	const clearAllData = () => {
-		// Si hay una petición en curso cuando el usuario resetea, la abortamos.
 		if (abortControllerRef.current) {
 			abortControllerRef.current.abort();
 		}
@@ -32,6 +34,7 @@ export function App() {
 		setGeneratedContent(null);
 		setError("");
 		setCache({});
+		setIsSidebarOpen(false); // Cierra el menú al resetear
 	};
 
 	const handleFile = useCallback(async (file) => {
@@ -108,6 +111,7 @@ export function App() {
 		if (!isRegenerating) {
 			setActiveTool(tool);
 			setError("");
+			setIsSidebarOpen(false); // Cierra el menú al seleccionar una herramienta en móvil
 			if (cache[tool]) {
 				setGeneratedContent(cache[tool]);
 				return;
@@ -122,14 +126,13 @@ export function App() {
 		}
 
 		try {
-			// Creamos un nuevo AbortController para esta petición específica.
 			abortControllerRef.current = new AbortController();
 
 			const response = await fetch("/api/generate-content", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({ text: inputText, tool: currentTool }),
-				signal: abortControllerRef.current.signal, // Pasamos la señal al fetch
+				signal: abortControllerRef.current.signal,
 			});
 
 			if (!response.ok) {
@@ -168,15 +171,10 @@ export function App() {
 				[currentTool]: newGeneratedContent,
 			}));
 		} catch (err) {
-			// --- CORRECCIÓN APLICADA AQUÍ ---
-			// Este nuevo bloque maneja los errores de forma más segura,
-			// ignorando los errores de aborto intencionados.
 			if (err.name !== "AbortError") {
-				// Solo maneja errores que NO son de aborto.
 				console.error("Error al llamar a la API:", err);
 				setError(`Error: ${err.message}`);
 			} else {
-				// Silenciosamente registra que la petición fue abortada.
 				console.log("Petición abortada por el usuario.");
 			}
 		} finally {
@@ -212,6 +210,8 @@ export function App() {
 			isRegenerating={isRegenerating}
 			generatedContent={generatedContent}
 			error={error}
+			isSidebarOpen={isSidebarOpen} // Pasa el estado del menú
+			toggleSidebar={() => setIsSidebarOpen((prev) => !prev)} // Pasa la función para abrir/cerrar
 		/>
 	);
 }
