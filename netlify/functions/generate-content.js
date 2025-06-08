@@ -4,9 +4,10 @@ import OpenAI from "openai";
 // --- PROMPTS PARA CADA HERRAMIENTA ---
 const getPrompt = (tool, text) => {
 	const commonInstructions = `Analiza el siguiente texto y genera el contenido solicitado. El texto es: """${text}"""`;
-	// ... (El resto de esta función no cambia)
+
 	switch (tool) {
 		case "summary":
+			// Este prompt pide texto plano, por lo que no debe forzarse a JSON.
 			return `
                 ${commonInstructions}
                 Tarea: Genera un resumen conciso y claro del texto. Debe capturar las ideas principales y los puntos clave.
@@ -14,20 +15,20 @@ const getPrompt = (tool, text) => {
 		case "flashcards":
 			return `
                 ${commonInstructions}
-                Tarea: Genera 3 flashcards en formato JSON. Cada flashcard debe tener una pregunta ('question') y una respuesta ('answer').
-                Ejemplo de formato de respuesta: [{"question": "Pregunta 1", "answer": "Respuesta 1"}, ...]
+                Tarea: Genera 3 flashcards. Tu respuesta DEBE ser un objeto JSON VÁLIDO y nada más. El objeto raíz debe tener una única clave llamada "flashcards", cuyo valor es un array de objetos. Cada objeto del array debe tener las claves "question" y "answer".
+                Ejemplo de formato: {"flashcards": [{"question": "Pregunta 1", "answer": "Respuesta 1"}]}
             `;
 		case "quiz":
 			return `
                 ${commonInstructions}
-                Tarea: Genera 2 preguntas de opción múltiple (quiz) en formato JSON. Cada pregunta debe tener un enunciado ('question'), un array de 4 opciones ('options') y el índice de la respuesta correcta ('answer', de 0 a 3).
-                Ejemplo de formato de respuesta: [{"question": "Pregunta 1", "options": ["Opción A", "Opción B", "Opción C", "Opción D"], "answer": 1}, ...]
+                Tarea: Genera 2 preguntas de quiz. Tu respuesta DEBE ser un objeto JSON VÁLIDO y nada más. El objeto raíz debe tener una única clave llamada "quiz", cuyo valor es un array de objetos. Cada objeto debe tener una clave "question", un array de 4 strings en "options" y el índice de la respuesta correcta en "answer".
+                Ejemplo de formato: {"quiz": [{"question": "Pregunta", "options": ["A", "B", "C", "D"], "answer": 1}]}
             `;
 		case "plan":
 			return `
-                ${commonInstructions}
-                Tarea: Genera un plan de estudio simple de 4 días en formato JSON. Cada día debe tener una propiedad 'day' y una 'task'.
-                Ejemplo de formato de respuesta: [{"day": "Día 1", "task": "Tarea del día 1"}, ...]
+                Analiza el siguiente texto: """${text}"""
+                Tu tarea es generar un plan de estudio de 4 días. Tu respuesta DEBE ser un objeto JSON VÁLIDO y nada más. El objeto raíz debe tener una única clave llamada "plan", cuyo valor es un array de objetos. Cada objeto debe tener las claves "day" y "task".
+                Ejemplo de formato: {"plan": [{"day": "Día 1", "task": "Tarea 1"}]}
             `;
 		default:
 			return null;
@@ -35,7 +36,6 @@ const getPrompt = (tool, text) => {
 };
 
 export const handler = async (event) => {
-	// Solo permitir peticiones POST
 	if (event.httpMethod !== "POST") {
 		return { statusCode: 405, body: "Method Not Allowed" };
 	}
@@ -43,8 +43,6 @@ export const handler = async (event) => {
 	try {
 		const { text, tool } = JSON.parse(event.body);
 
-		// --- CORRECCIÓN APLICADA AQUÍ ---
-		// La validación ahora comprueba si la clave de API NO existe.
 		if (!text || !tool || !process.env.OPENAI_API_KEY) {
 			return {
 				statusCode: 400,
@@ -56,8 +54,8 @@ export const handler = async (event) => {
 		}
 
 		const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
 		const prompt = getPrompt(tool, text);
+
 		if (!prompt) {
 			return {
 				statusCode: 400,
@@ -70,18 +68,20 @@ export const handler = async (event) => {
 		const response = await openai.chat.completions.create({
 			model: "gpt-4o-mini",
 			messages: [{ role: "user", content: prompt }],
+			// --- CORRECCIÓN APLICADA AQUÍ ---
+			// El formato de respuesta ahora es condicional.
+			// Para 'summary', permite texto. Para el resto, fuerza un objeto JSON.
 			response_format:
-				tool !== "summary" ? { type: "json_object" } : { type: "text" },
+				tool === "summary" ? { type: "text" } : { type: "json_object" },
 		});
 
 		const content = response.choices[0].message.content;
 
 		return {
 			statusCode: 200,
-			headers: {
-				"Content-Type": "application/json",
-			},
-			body: tool !== "summary" ? content : JSON.stringify({ summary: content }),
+			headers: { "Content-Type": "application/json" },
+			// La lógica para envolver el resumen en un JSON se mantiene, lo cual es correcto.
+			body: tool === "summary" ? JSON.stringify({ summary: content }) : content,
 		};
 	} catch (error) {
 		console.error("Error en la función de Netlify:", error);
